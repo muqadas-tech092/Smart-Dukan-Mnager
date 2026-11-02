@@ -56,6 +56,19 @@ categories, enabled modules and the licence notice shown in Settings > About. Ch
 Everything in `config.js` is documented inline. Shop owners can still change their shop
 name, logo, primary colour, currency and language from **Settings** inside the app.
 
+## Scanning and QR labels
+
+- **Point of Sale scan bar.** A USB or Bluetooth barcode scanner types the code and presses Enter,
+  which adds the product to the cart (barcode, SKU or exact name all match). Type `3*CODE` to add
+  three at once. **Scan with camera** opens the phone camera and adds one item per scan.
+- **One-tap checkout.** *Cash & Done* completes the sale with exact cash; *Cash & Print* also opens
+  the receipt for printing. On the receipt screen, the next scan or Enter starts the next sale.
+- **QR labels.** Products & Inventory > *QR labels* prints a sticker sheet (25, 35 or 50 mm) for the
+  products in the current list, each encoding the product barcode (or SKU). The product form also has
+  a camera button to scan an existing barcode into the barcode field.
+- Camera scanning needs HTTPS (GitHub Pages provides it) and uses the browser's built-in detector;
+  on browsers without it a small QR decoder is loaded on demand, so QR stickers always work.
+
 ## Install as an app
 
 The site ships a web app manifest and a service worker, so Chrome on Android and desktop
