@@ -6,6 +6,7 @@ const S = {
   "nav.expenses": ["Expenses", "اخراجات"], "nav.reports": ["Reports & Analytics", "رپورٹس اور تجزیہ"],
   "nav.settings": ["Settings", "ترتیبات"], "nav.main": ["Main", "مرکزی"], "nav.manage": ["Manage", "انتظام"], "nav.insights": ["Insights", "بصیرت"],
   "nav.more": ["More", "مزید"],
+  "nav.short.dashboard": ["Home", "ہوم"], "nav.short.pos": ["POS", "فروخت"], "nav.short.inventory": ["Products", "پروڈکٹس"], "nav.short.khata": ["Khata", "کھاتہ"],
   "top.search": ["Search products, customers or invoices", "پروڈکٹ، گاہک یا انوائس تلاش کریں"],
   "top.notifications": ["Notifications", "اطلاعات"], "top.no_notifications": ["You are all caught up.", "کوئی نئی اطلاع نہیں۔"],
   "top.owner": ["Owner", "مالک"], "top.no_results": ["Nothing matched your search.", "آپ کی تلاش سے کچھ نہیں ملا۔"],

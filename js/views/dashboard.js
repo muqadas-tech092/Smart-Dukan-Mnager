@@ -1,3 +1,4 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, fmtDate, fmtDay, initials, pageHead, section, kpi, listRow, emptyState, statusBadge, imgSrc, rangeControl, bindRangeControl, rangeFor, btn } from "../ui.js";
@@ -6,7 +7,8 @@ import { store, todayISO, addDays } from "../store.js";
 
 function pct(cur, prev) { if (prev <= 0) return ["", "flat"]; const ch = (cur - prev) / prev * 100; return [`${ch >= 0 ? "+" : ""}${ch.toFixed(0)}% ${t("dash.vs_yesterday")}`, ch >= 0 ? "up" : "down"]; }
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.dashboard || (app.ui.dashboard = {});
   const today = todayISO(); const yday = addDays(today, -1);
   const cur = store.summary(today, today), prev = store.summary(yday, yday); const inv = store.inventoryValue(); const low = store.lowStock();

@@ -1,8 +1,10 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { esc, money, fmtDate, initials, pageHead, kpi, emptyState, badge, btn, iconBtn, field, input, formValues, setError, openModal, closeModal, confirmDialog, toast, table, paginate, pager } from "../ui.js";
 import { store } from "../store.js";
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.customers || (app.ui.customers = { search: "", page: 1 });
   const summary = store.khataSummary(); const customers = store.getCustomers(st.search); const pg = paginate(customers, "page", 10, st);
   root.innerHTML = `${pageHead(t("cust.title"), t("cust.subtitle"), btn(t("cust.add"), { cls: "primary", ic: "user-plus", attrs: "data-add" }))}

@@ -19,6 +19,12 @@ export const initials = (name) => (String(name || "").split(/\s+/).filter(Boolea
 export const imgSrc = (p) => (p && p.image_data) || "assets/placeholder.png";
 export const logoSrc = () => store.settings.logo_data || (window.SDM_CONFIG?.theme?.logo) || "assets/logo.png";
 
+/** Replace the view container with a clean clone so listeners from the previous render are dropped.
+    Every view calls this at the top of render() and draws into the element it returns. */
+export function freshView() {
+  const old = document.getElementById("view"); const next = old.cloneNode(false); old.replaceWith(next); return next;
+}
+
 // ------------------------------------------------------------------ blocks
 export const pageHead = (title, subtitle = "", actions = "") => `<div class="page-head"><div><h1>${esc(title)}</h1>${subtitle ? `<p>${esc(subtitle)}</p>` : ""}</div>${actions ? `<div class="page-actions">${actions}</div>` : ""}</div>`;
 export const section = (title, ic = "", hint = "", right = "") => `<div class="section"><h3>${ic ? icon(ic, 17) : ""}${esc(title)}</h3>${right || (hint ? `<span class="hint">${esc(hint)}</span>` : "")}</div>`;

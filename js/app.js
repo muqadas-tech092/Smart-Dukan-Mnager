@@ -73,7 +73,7 @@ function renderShell() {
   document.getElementById("profile").innerHTML = `<div class="who"><b>${esc(s.owner_name || "")}</b><span>${esc(t("top.owner"))}</span></div><div class="avatar">${esc(initials(s.owner_name || s.shop_name))}</div>`;
   document.querySelectorAll("#langSwitch button").forEach((b) => b.classList.toggle("active", b.dataset.lang === getLang()));
   document.getElementById("langSwitch").hidden = F.urdu === false;
-  document.getElementById("bottomNav").innerHTML = BOTTOM.filter((k) => NAV.some((n) => n[0] === k)).map((k) => { const n = NAV.find((x) => x[0] === k); return `<button type="button" data-nav="${k}" class="${page === k ? "active" : ""}">${icon(n[2], 20)}<span>${esc(t(n[1]).split(" ")[0])}</span></button>`; }).join("") + `<button type="button" data-menu class="">${icon("menu", 20)}<span>${esc(t("nav.more"))}</span></button>`;
+  document.getElementById("bottomNav").innerHTML = BOTTOM.filter((k) => NAV.some((n) => n[0] === k)).map((k) => { const n = NAV.find((x) => x[0] === k); return `<button type="button" data-nav="${k}" class="${page === k ? "active" : ""}">${icon(n[2], 20)}<span>${esc(t(`nav.short.${k}`))}</span></button>`; }).join("") + `<button type="button" data-menu class="">${icon("menu", 20)}<span>${esc(t("nav.more"))}</span></button>`;
   renderNotifications();
 }
 function renderNotifications() {

@@ -1,3 +1,4 @@
+import { freshView } from "../ui.js";
 import { t, getLang, setLang } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, field, input, select, btn, formValues, setError, logoSrc } from "../ui.js";
@@ -6,7 +7,8 @@ import { store } from "../store.js";
 const CFG = window.SDM_CONFIG || {};
 let step = 0;
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const s = store.settings; const demoAllowed = (CFG.features || {}).demoData !== false;
   document.getElementById("app").classList.add("menu-open"); document.getElementById("app").classList.remove("menu-open");
   root.innerHTML = `<div class="card" style="max-width:640px;margin:24px auto">

@@ -1,9 +1,11 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, fmtDate, initials, pageHead, kpi, section, emptyState, badge, btn, iconBtn, field, input, select, formValues, openModal, closeModal, toast, errorMessage, table, paginate, pager, statementHTML, printHTML, copyText } from "../ui.js";
 import { store, CREDIT_METHOD } from "../store.js";
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.khata || (app.ui.khata = { search: "", onlyDue: true, page: 1, customer: null });
   if (app.params && app.params.customer) { st.customer = Number(app.params.customer); app.params = {}; }
   const summary = store.khataSummary(); const customers = store.getCustomers();

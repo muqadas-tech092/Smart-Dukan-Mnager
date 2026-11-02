@@ -1,3 +1,4 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, fmtDate, pageHead, kpi, emptyState, statusBadge, imgSrc, btn, iconBtn, field, input, select, formValues, setError, openModal, closeModal, confirmDialog, toast, errorMessage, table, paginate, pager, readImageFile, toCSV, parseCSV, downloadFile } from "../ui.js";
@@ -5,7 +6,8 @@ import { store } from "../store.js";
 
 const CFG = window.SDM_CONFIG || {}; const UNITS = (CFG.defaults || {}).units || ["pcs"];
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.inventory || (app.ui.inventory = { search: "", cat: "", status: "all", sort: "name", page: 1 });
   const inv = store.inventoryValue(); const low = store.lowStock();
   let products = store.getProducts({ search: st.search || "", categoryId: st.cat ? Number(st.cat) : null, status: st.status === "all" ? null : st.status });

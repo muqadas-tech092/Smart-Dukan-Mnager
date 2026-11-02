@@ -1,8 +1,10 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { esc, money, fmtDate, pageHead, kpi, emptyState, badge, btn, iconBtn, field, input, select, table, paginate, pager, rangeControl, bindRangeControl, rangeFor, invoiceHTML, printHTML, toCSV, downloadFile } from "../ui.js";
 import { store } from "../store.js";
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.sales || (app.ui.sales = { search: "", method: "All", page: 1, open: null });
   if (app.params && app.params.open) { st.open = Number(app.params.open); app.params = {}; }
   if (st.open) return renderInvoice(root, app, st);

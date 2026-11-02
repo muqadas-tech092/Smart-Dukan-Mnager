@@ -1,9 +1,11 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { esc, money, fmtDay, pageHead, kpi, section, emptyState, btn, table, rangeControl, bindRangeControl, rangeFor, toCSV, downloadFile } from "../ui.js";
 import { lineAreaChart, donutChart, hbarChart, columnChart, mountCharts } from "../charts.js";
 import { store } from "../store.js";
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.reports || (app.ui.reports = {});
   const [start, end] = rangeFor((st.range || {}).preset || "30d", st.range || {});
   const s = store.summary(start, end); const daily = store.salesByDay(start, end); const hasData = daily.some((d) => d.revenue || d.expenses);

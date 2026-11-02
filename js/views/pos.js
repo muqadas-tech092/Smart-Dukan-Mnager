@@ -1,3 +1,4 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, pageHead, section, emptyState, imgSrc, btn, select, field, toast, errorMessage, openModal, closeModal, invoiceHTML, printHTML, paginate, pager } from "../ui.js";
@@ -16,7 +17,8 @@ function add(p) { const cur = cart.get(p.id) || 0; if (cur + 1 > p.quantity) { t
 function setQty(p, qty) { if (qty <= 0) cart.delete(p.id); else cart.set(p.id, Math.min(qty, p.quantity)); if (qty > p.quantity) toast(t("pos.stock_limit", { n: p.quantity }), "error"); state.received = null; }
 function clearCart() { cart.clear(); state.discount = 0; state.received = null; state.customer = ""; }
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   if (state.lastSale) return renderSuccess(root, app);
   const products = store.getProducts({ search: state.search, categoryId: state.cat });
   const pg = paginate(products, "page", 24, state); const cats = store.categories;
@@ -37,16 +39,17 @@ function productCard(p) {
   const stock = out ? t("pos.out_of_stock") : `${p.quantity} ${t("pos.in_stock")}`;
   return `<button type="button" class="product ${out ? "out" : ""}" data-add="${p.id}" ${out ? "disabled" : ""}><img src="${imgSrc(p)}" alt="" loading="lazy"/>${inCart ? `<span class="in-cart">${inCart}</span>` : ""}<div class="meta"><div class="name">${esc(p.name)}</div><div class="price num">${money(p.selling_price)}</div><div class="stock ${p.status}">${esc(stock)}</div></div></button>`;
 }
-function cartHTML() {
+function cartHTML(inModal = false) {
   const items = cartItems(); const n = items.reduce((s, i) => s + i.qty, 0);
-  if (!items.length) return `${section(t("pos.cart"), "shopping-cart")}${emptyState(t("pos.empty_cart"), t("pos.empty_cart_hint"), "empty_cart.png")}`;
+  const head = inModal ? "" : section(t("pos.cart"), "shopping-cart", items.length ? `${n} ${t("common.items")}` : "");
+  if (!items.length) return `${head}${emptyState(t("pos.empty_cart"), t("pos.empty_cart_hint"), "empty_cart.png")}`;
   const { sub, discount, total } = totals(); const isCredit = state.method === CREDIT_METHOD;
   if (state.received === null) state.received = isCredit ? 0 : total;
   const received = Number(state.received) || 0; const change = received - total;
   const customers = store.getCustomers();
   const changeBox = isCredit && change < 0 ? `<div class="change credit"><span>${esc(t("pos.credit_due"))}</span><span class="num">${money(-change)}</span></div>` : change < 0 ? `<div class="change warn"><span>${esc(t("pos.short"))}</span><span class="num">${money(received)} / ${money(total)}</span></div>` : `<div class="change"><span>${esc(t("pos.change"))}</span><span class="num">${money(change)}</span></div>`;
   const canCheckout = isCredit ? !!state.customer : received + 0.001 >= total;
-  return `${section(t("pos.cart"), "shopping-cart", `${n} ${t("common.items")}`)}
+  return `${head}
   <div class="cart-lines">${items.map(({ product: p, qty }) => `<div class="cart-line"><div><div class="n">${esc(p.name)}</div><div class="p num">${money(p.selling_price)} × ${qty}</div></div><div class="qty"><button type="button" data-dec="${p.id}" aria-label="-">${icon("minus", 14)}</button><span class="num">${qty}</span><button type="button" data-inc="${p.id}" aria-label="+">${icon("plus", 14)}</button></div><div class="lt num">${money(p.selling_price * qty)}</div><button type="button" class="btn-icon danger" data-rm="${p.id}" aria-label="${esc(t("common.delete"))}">${icon("x", 14)}</button></div>`).join("")}</div>
   <div class="form-grid" style="margin-top:12px">
     ${field(t("pos.discount"), `<input type="number" min="0" max="${sub}" step="1" name="discount" value="${discount}" inputmode="decimal"/>`)}
@@ -62,7 +65,7 @@ function cartHTML() {
 function refreshCart(root) {
   // Listeners live on the container elements, so only the inner markup is replaced here.
   const card = root.querySelector("#cartCard"); if (card) card.innerHTML = cartHTML();
-  const modalBody = document.querySelector("#modalRoot .modal-body #cartModal"); if (modalBody) modalBody.innerHTML = cartHTML();
+  const modalBody = document.querySelector("#modalRoot .modal-body #cartModal"); if (modalBody) modalBody.innerHTML = cartHTML(true);
   const fab = root.querySelector("#cartFab span"); if (fab) fab.textContent = `${t("pos.view_cart")} (${[...cart.values()].reduce((a, b) => a + b, 0)})`;
   root.querySelectorAll("[data-add]").forEach((b) => { const id = Number(b.dataset.add); const q = cart.get(id); let badge = b.querySelector(".in-cart"); if (q) { if (!badge) { badge = document.createElement("span"); badge.className = "in-cart"; b.appendChild(badge); } badge.textContent = q; } else if (badge) badge.remove(); });
 }
@@ -92,7 +95,7 @@ function bind(root, app) {
   root.addEventListener("click", (e) => {
     const addBtn = e.target.closest("[data-add]"); if (addBtn) { const p = store.getProduct(Number(addBtn.dataset.add)); add(p); refreshCart(root); return; }
     const pg = e.target.closest("[data-pager]"); if (pg) { state.page += Number(pg.dataset.dir); render(root, app); return; }
-    if (e.target.closest("#cartFab")) { openModal({ title: t("pos.cart"), ic: "shopping-cart", body: `<div id="cartModal">${cartHTML()}</div>`, onMount: (m) => bindCart(m.querySelector("#cartModal"), root) }); }
+    if (e.target.closest("#cartFab")) { openModal({ title: t("pos.cart"), ic: "shopping-cart", body: `<div id="cartModal">${cartHTML(true)}</div>`, onMount: (m) => bindCart(m.querySelector("#cartModal"), root) }); }
   });
   bindCart(root.querySelector("#cartCard"), root);
 }

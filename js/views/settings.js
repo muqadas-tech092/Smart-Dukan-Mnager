@@ -1,3 +1,4 @@
+import { freshView } from "../ui.js";
 import { t, setLang } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, pageHead, section, btn, field, input, select, formValues, setError, toast, table, confirmDialog, readImageFile, downloadFile, logoSrc } from "../ui.js";
@@ -6,7 +7,8 @@ import { store } from "../store.js";
 const CFG = window.SDM_CONFIG || {};
 const TABS = ["profile", "prefs", "branding", "categories", "data", "about"];
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.settings || (app.ui.settings = { tab: "profile" }); const s = store.settings;
   const labels = { profile: t("set.shop_profile"), prefs: t("set.preferences"), branding: t("set.branding"), categories: t("set.categories"), data: t("set.data"), about: t("set.about") };
   root.innerHTML = `${pageHead(t("set.title"), t("set.subtitle"))}<div class="tabs">${TABS.map((k) => `<button type="button" class="${st.tab === k ? "active" : ""}" data-tab="${k}">${esc(labels[k])}</button>`).join("")}</div><div id="tabBody"></div>`;

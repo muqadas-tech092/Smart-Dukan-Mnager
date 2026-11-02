@@ -1,10 +1,12 @@
+import { freshView } from "../ui.js";
 import { t } from "../i18n.js";
 import { esc, money, fmtDate, pageHead, kpi, section, emptyState, badge, btn, iconBtn, field, input, select, formValues, setError, openModal, closeModal, confirmDialog, toast, errorMessage, table, paginate, pager, rangeControl, bindRangeControl, rangeFor, toCSV, downloadFile } from "../ui.js";
 import { donutChart, hbarChart } from "../charts.js";
 import { store, todayISO, addDays } from "../store.js";
 import { CREDIT_METHOD } from "../store.js";
 
-export function render(root, app) {
+export function render(_root, app) {
+  const root = freshView();
   const st = app.ui.expenses || (app.ui.expenses = { search: "", category: "All", page: 1 });
   const [start, end] = rangeFor((st.range || {}).preset || "30d", st.range || {});
   const expenses = store.getExpenses({ start, end, category: st.category, search: st.search }); const total = expenses.reduce((s, e) => s + e.amount, 0);
