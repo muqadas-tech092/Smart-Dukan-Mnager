@@ -66,8 +66,11 @@ name, logo, primary colour, currency and language from **Settings** inside the a
 - **QR labels.** Products & Inventory > *QR labels* prints a sticker sheet (25, 35 or 50 mm) for the
   products in the current list, each encoding the product barcode (or SKU). The product form also has
   a camera button to scan an existing barcode into the barcode field.
-- Camera scanning needs HTTPS (GitHub Pages provides it) and uses the browser's built-in detector;
-  on browsers without it a small QR decoder is loaded on demand, so QR stickers always work.
+- Camera scanning needs HTTPS (GitHub Pages provides it). Chrome on Android reads QR and retail
+  barcodes with its built-in detector; every other browser uses the bundled QR decoder
+  (`js/vendor/jsQR.js`), so the QR stickers printed from the app scan everywhere, even offline.
+- A label that stays in front of the camera counts once. Move it away and scan again to add another
+  unit, or adjust the quantity in the cart.
 
 ## Install as an app
 

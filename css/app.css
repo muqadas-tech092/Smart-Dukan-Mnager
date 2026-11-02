@@ -284,6 +284,7 @@ table.tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size
 .scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scan-frame { position: absolute; inset: 14% 12%; border: 2px solid rgba(255,255,255,.85); border-radius: 14px; box-shadow: 0 0 0 999px rgba(0,0,0,.35); }
 .scan-frame::after { content: ''; position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; background: var(--primary); animation: scanline 1.6s ease-in-out infinite; }
+.scan-frame.hit { border-color: var(--primary); box-shadow: 0 0 0 999px rgba(0,0,0,.35), inset 0 0 0 4px rgba(8,127,91,.55); transition: box-shadow .1s; }
 @keyframes scanline { 0%, 100% { transform: translateY(-60px); opacity: .4; } 50% { transform: translateY(60px); opacity: 1; } }
 .scan-status { margin-top: 10px; font-size: 0.84rem; color: var(--muted); text-align: center; }
 .scan-last { text-align: center; font-weight: 600; margin-top: 4px; min-height: 1.4em; font-family: var(--font); }

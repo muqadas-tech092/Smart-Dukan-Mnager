@@ -48,8 +48,10 @@ export const iconBtn = (ic, title, attrs = "", cls = "") => `<button type="butto
 
 // ------------------------------------------------------------------ modal / toast / confirm
 const modalRoot = () => document.getElementById("modalRoot");
-export function openModal({ title, ic = "", body, footer = "", size = "", onMount }) {
-  closeModal();
+/** Open a dialog. By default it replaces any open dialog; pass stack: true to open on top of the current one
+    (used by the camera scanner inside the product form). closeModal() closes the topmost dialog only. */
+export function openModal({ title, ic = "", body, footer = "", size = "", onMount, stack = false }) {
+  if (!stack) closeModal(true);
   const wrap = document.createElement("div"); wrap.className = "modal-backdrop";
   wrap.innerHTML = `<div class="modal ${size}" role="dialog" aria-modal="true"><div class="modal-head"><h3>${ic ? icon(ic, 18) : ""}${esc(title)}</h3><button type="button" class="btn-icon" data-close aria-label="${esc(t("common.close"))}">${icon("x", 16)}</button></div><div class="modal-body">${body}</div>${footer ? `<div class="modal-foot">${footer}</div>` : ""}</div>`;
   wrap.addEventListener("click", (e) => { if (e.target === wrap || e.target.closest("[data-close]")) closeModal(); });
@@ -59,7 +61,7 @@ export function openModal({ title, ic = "", body, footer = "", size = "", onMoun
   if (onMount) onMount(wrap.querySelector(".modal"));
   return wrap.querySelector(".modal");
 }
-export function closeModal() { const r = modalRoot(); if (r.firstChild) r.innerHTML = ""; document.body.style.overflow = ""; }
+export function closeModal(all = false) { const r = modalRoot(); if (all) r.innerHTML = ""; else if (r.lastChild) r.lastChild.remove(); if (!r.firstChild) document.body.style.overflow = ""; }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 export function confirmDialog({ title, body, danger = true, confirmText = "" }) {
   return new Promise((resolve) => {

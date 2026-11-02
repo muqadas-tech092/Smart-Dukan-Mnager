@@ -1,10 +1,10 @@
 /* Service worker: caches the app shell so it opens instantly and works offline.
    Bump CACHE_VERSION whenever files change so clients pick up the update. */
-const CACHE_VERSION = "sdm-v2.1.0";
+const CACHE_VERSION = "sdm-v2.1.1";
 const SHELL = [
   "./", "./index.html", "./config.js", "./manifest.webmanifest",
   "./css/app.css",
-  "./js/app.js", "./js/scanner.js", "./js/store.js", "./js/ui.js", "./js/icons.js", "./js/i18n.js", "./js/charts.js", "./js/router.js",
+  "./js/app.js", "./js/scanner.js", "./js/vendor/jsQR.js", "./js/vendor/qrcode.js", "./js/store.js", "./js/ui.js", "./js/icons.js", "./js/i18n.js", "./js/charts.js", "./js/router.js",
   "./js/views/dashboard.js", "./js/views/pos.js", "./js/views/inventory.js", "./js/views/customers.js",
   "./js/views/khata.js", "./js/views/sales.js", "./js/views/expenses.js", "./js/views/reports.js",
   "./js/views/settings.js", "./js/views/onboarding.js",

@@ -116,7 +116,7 @@ const S = {
   "onb.demo": ["Load sample data so I can explore", "نمونہ ڈیٹا لوڈ کریں تاکہ میں دیکھ سکوں"], "onb.start": ["Open my shop", "میری دکان کھولیں"],
   "onb.step_shop": ["Shop details", "دکان کی تفصیلات"], "onb.step_prefs": ["Preferences", "ترجیحات"],
   "scan.title": ["Scan barcode or QR", "بارکوڈ یا QR اسکین کریں"], "scan.placeholder": ["Scan barcode or type SKU, then press Enter", "بارکوڈ اسکین کریں یا SKU لکھ کر Enter دبائیں"],
-  "scan.camera": ["Scan with camera", "کیمرے سے اسکین"], "scan.point": ["Point the camera at the product label. Each scan adds one item.", "کیمرہ پروڈکٹ لیبل پر رکھیں۔ ہر اسکین ایک آئٹم شامل کرتا ہے۔"],
+  "scan.camera": ["Scan with camera", "کیمرے سے اسکین"], "scan.point": ["Point the camera at the product label. Move it away and scan again to add another.", "کیمرہ پروڈکٹ لیبل پر رکھیں۔ ایک اور شامل کرنے کے لیے لیبل ہٹا کر دوبارہ اسکین کریں۔"],
   "scan.point_qr": ["Point the camera at the QR label.", "کیمرہ QR لیبل پر رکھیں۔"], "scan.loading": ["Loading", "لوڈ ہو رہا ہے"],
   "scan.denied": ["Camera access was denied. Allow the camera in your browser settings and try again.", "کیمرے کی اجازت نہیں ملی۔ براؤزر سیٹنگز میں کیمرہ کی اجازت دیں۔"],
   "scan.unsupported": ["This browser cannot scan. Use Chrome, or type the code.", "یہ براؤزر اسکین نہیں کر سکتا۔ Chrome استعمال کریں یا کوڈ لکھیں۔"],
