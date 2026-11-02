@@ -1,4 +1,5 @@
 import { freshView } from "../ui.js";
+import { openScanner, cameraSupported, qrDataURL } from "../scanner.js";
 import { t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, fmtDate, pageHead, kpi, emptyState, statusBadge, imgSrc, btn, iconBtn, field, input, select, formValues, setError, openModal, closeModal, confirmDialog, toast, errorMessage, table, paginate, pager, readImageFile, toCSV, parseCSV, downloadFile } from "../ui.js";
@@ -33,6 +34,7 @@ export function render(_root, app) {
     <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;align-items:center">
       ${btn(t("common.export_csv"), { ic: "download", cls: "sm", attrs: 'data-export' })}
       ${(CFG.features || {}).csvImport !== false ? btn(t("common.import_csv"), { ic: "upload", cls: "sm", attrs: 'data-import' }) : ""}
+      ${btn(t("labels.print"), { ic: "tag", cls: "sm", attrs: 'data-labels' })}
       <span class="faint" style="margin-inline-start:auto">${products.length} ${esc(t("common.rows"))}</span>
     </div>
     ${products.length ? table({ columns: [{ label: t("inv.product"), cls: "cell-primary" }, { label: t("inv.sku"), cls: "sm-hide" }, { label: t("common.category") }, { label: t("inv.quantity"), cls: "num" }, { label: t("inv.purchase_price"), cls: "num sm-hide" }, { label: t("inv.selling_price"), cls: "num" }, { label: t("inv.stock_status") }, { label: t("common.actions"), cls: "actions-cell" }],
@@ -57,6 +59,7 @@ export function render(_root, app) {
     const pg2 = e.target.closest("[data-pager]"); if (pg2) { st.page += Number(pg2.dataset.dir); render(root, app); return; }
     if (e.target.closest("[data-export]")) { downloadFile("products.csv", toCSV(products.map((p) => ({ ...p, category: p.category })), ["name", "name_ur", "sku", "barcode", "category", "purchase_price", "selling_price", "quantity", "low_stock_threshold", "unit"]), "text/csv"); return; }
     if (e.target.closest("[data-import]")) return importDialog(root, app);
+    if (e.target.closest("[data-labels]")) return labelsDialog(products);
   });
 }
 function rerenderKeepFocus(root, app) { const pos = root.querySelector('input[name="search"]').selectionStart; render(root, app); const inp = root.querySelector('input[name="search"]'); inp.focus(); inp.setSelectionRange(pos, pos); }
@@ -66,7 +69,7 @@ function productDialog(existing, root, app) {
   let imageData = e.image_data || ""; let imageTouched = false;
   const body = `<form id="pf" novalidate><div class="form-grid">
     ${field(t("common.name"), input("name", e.name || "", "required"))}${field(t("inv.urdu_name"), input("name_ur", e.name_ur || "", 'dir="rtl"'), { optional: true })}
-    ${field("SKU", input("sku", e.sku || "", 'placeholder="auto"'), { optional: true })}${field("Barcode", input("barcode", e.barcode || "", 'inputmode="numeric"'), { optional: true })}
+    ${field("SKU", input("sku", e.sku || "", 'placeholder="auto"'), { optional: true })}<div class="field"><label>Barcode <span class="faint">(${esc(t("common.optional"))})</span></label><div style="display:flex;gap:8px"><input name="barcode" value="${esc(e.barcode || "")}" inputmode="numeric" style="flex:1"/>${cameraSupported() ? `<button type="button" class="btn sm" id="pfScan" title="${esc(t("scan.camera"))}">${icon("camera", 14)}</button>` : ""}</div><span class="err"></span></div>
     ${field(t("common.category"), select("category_id", [["", "-"], ...cats.map((c) => [c.id, c.name])], e.category_id || ""))}${field(t("inv.new_category"), input("new_cat", ""), { optional: true })}
     ${field(t("inv.purchase_price"), input("purchase_price", e.purchase_price ?? 0, 'type="number" min="0" step="1" inputmode="decimal"'))}${field(t("inv.selling_price"), input("selling_price", e.selling_price ?? 0, 'type="number" min="0" step="1" inputmode="decimal"'))}
     ${field(t("inv.quantity"), input("quantity", e.quantity ?? 0, 'type="number" min="0" step="1" inputmode="numeric"'))}${field(t("inv.threshold"), input("low_stock_threshold", e.low_stock_threshold ?? thr, 'type="number" min="0" step="1" inputmode="numeric"'))}
@@ -80,6 +83,7 @@ function productDialog(existing, root, app) {
       const check = () => { const v = formValues(form); warn.hidden = !(Number(v.selling_price) && Number(v.purchase_price) && Number(v.selling_price) < Number(v.purchase_price)); };
       form.addEventListener("input", check); check();
       form.querySelector('input[name="photo"]').addEventListener("change", async (ev) => { const f = ev.target.files[0]; if (!f) return; try { imageData = await readImageFile(f); imageTouched = true; m.querySelector("#pfPreview").src = imageData; } catch { toast("Invalid image", "error"); } });
+      m.querySelector("#pfScan")?.addEventListener("click", () => openScanner({ title: t("scan.title"), continuous: false, onCode: (code) => { const inp = form.querySelector('input[name="barcode"]'); if (inp) inp.value = code; return true; } }));
       m.querySelector("#pfRemovePhoto")?.addEventListener("click", () => { imageData = ""; imageTouched = true; m.querySelector("#pfPreview").src = "assets/placeholder.png"; });
       m.querySelector("[data-save]").addEventListener("click", () => {
         const v = formValues(form); if (!v.name) { setError(form, "name", t("common.required")); return; }
@@ -113,4 +117,27 @@ function importDialog(root, app) {
       m.querySelector("#csvFile").addEventListener("change", async (e) => { const f = e.target.files[0]; if (!f) return; rows = parseCSV(await f.text()); m.querySelector("#csvMsg").textContent = `${rows.length} ${t("common.rows")}`; m.querySelector("[data-go]").disabled = !rows.length; });
       m.querySelector("[data-go]").addEventListener("click", () => { const r = store.importProducts(rows); closeModal(); toast(t("inv.import_done", { a: r.inserted, b: r.updated })); render(root, app); });
     } });
+}
+
+/** Printable QR label sheet for the products currently listed (filters applied). */
+function labelsDialog(products) {
+  const sizes = [["s", t("labels.size_small")], ["m", t("labels.size_medium")], ["l", t("labels.size_large")]];
+  const body = `<p class="muted" style="margin:0 0 10px">${esc(t("labels.hint"))}</p><form id="lf" novalidate><div class="form-grid">
+    ${field(t("labels.size"), select("size", sizes, "m"))}${field(t("labels.count"), `<input name="copies" type="number" min="1" max="20" value="1" inputmode="numeric"/>`)}
+    <label class="check span-2"><input type="checkbox" name="price" checked/> <span>${esc(t("labels.show_price"))}</span></label>
+    <label class="check span-2"><input type="checkbox" name="shop" checked/> <span>${esc(t("labels.show_shop"))}</span></label>
+    </div></form><div class="faint" style="margin-top:8px">${products.length} ${esc(t("common.rows"))}</div>`;
+  openModal({ title: t("labels.print"), ic: "tag", body, footer: btn(t("common.cancel"), { attrs: "data-close" }) + btn(t("common.print"), { cls: "primary", ic: "printer", attrs: "data-go" }), onMount: (m) => {
+    m.querySelector("[data-go]").addEventListener("click", async () => {
+      const v = formValues(m.querySelector("#lf")); const copies = Math.max(1, Math.min(20, parseInt(v.copies) || 1));
+      const go = m.querySelector("[data-go]"); go.disabled = true; go.querySelector("span").textContent = t("scan.loading");
+      try {
+        const cells = [];
+        for (const p of products) { const code = p.barcode || p.sku; const img = await qrDataURL(code, 4); for (let i = 0; i < copies; i++) cells.push(`<div class="label"><img src="${img}" alt=""/><div class="lbl-name">${esc(p.name)}</div>${v.price ? `<div class="lbl-price">${money(p.selling_price)}</div>` : ""}<div class="lbl-code">${esc(code)}</div>${v.shop ? `<div class="lbl-shop">${esc(store.settings.shop_name)}</div>` : ""}</div>`); }
+        closeModal();
+        const { printHTML } = await import("../ui.js");
+        printHTML(`<div class="label-sheet size-${v.size}">${cells.join("")}</div>`);
+      } catch (err) { toast(err.message, "error"); go.disabled = false; go.querySelector("span").textContent = t("common.print"); }
+    });
+  } });
 }

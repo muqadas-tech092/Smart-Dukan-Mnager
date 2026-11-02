@@ -179,5 +179,14 @@ export function printHTML(html) {
   const done = () => { root.hidden = true; root.innerHTML = ""; window.removeEventListener("afterprint", done); };
   window.addEventListener("afterprint", done); setTimeout(() => window.print(), 50);
 }
+const scriptCache = new Map();
+/** Load a third-party script once (used for on-demand QR encode/decode libraries). */
+export function loadScript(url) {
+  if (!scriptCache.has(url)) scriptCache.set(url, new Promise((resolve, reject) => {
+    const s = document.createElement("script"); s.src = url; s.async = true; s.onload = resolve; s.onerror = () => { scriptCache.delete(url); reject(new Error(`Failed to load ${url}`)); }; document.head.appendChild(s);
+  }));
+  return scriptCache.get(url);
+}
+export const isMobile = () => window.matchMedia("(max-width: 640px)").matches;
 export function copyText(text) { if (navigator.clipboard) return navigator.clipboard.writeText(text).then(() => toast(t("common.copied"))); const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast(t("common.copied")); }
 export { icon, t, isRTL };

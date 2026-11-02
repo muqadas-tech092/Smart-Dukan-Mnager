@@ -1,11 +1,13 @@
-import { freshView } from "../ui.js";
+import { freshView, isMobile } from "../ui.js";
 import { t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { esc, money, pageHead, section, emptyState, imgSrc, btn, select, field, toast, errorMessage, openModal, closeModal, invoiceHTML, printHTML, paginate, pager } from "../ui.js";
 import { store, CREDIT_METHOD } from "../store.js";
+import { openScanner, cameraSupported, beep } from "../scanner.js";
 
 const cart = new Map(); // product_id -> qty
-let state = { search: "", cat: null, page: 1, discount: 0, method: "Cash", customer: "", received: null, lastSale: null };
+let state = { search: "", cat: null, page: 1, discount: 0, method: "Cash", customer: "", received: null, lastSale: null, autoPrint: false };
+let currentRoot = null;
 
 function cartItems() { return [...cart.entries()].map(([id, qty]) => ({ product: store.getProduct(id), qty })).filter((x) => x.product); }
 function totals() {
@@ -13,16 +15,41 @@ function totals() {
   const discount = Math.max(0, Math.min(Number(state.discount) || 0, sub)); const total = Math.round((sub - discount) * 100) / 100;
   return { sub, discount, total };
 }
-function add(p) { const cur = cart.get(p.id) || 0; if (cur + 1 > p.quantity) { toast(t("pos.stock_limit", { n: p.quantity }), "error"); return; } cart.set(p.id, cur + 1); state.received = null; }
+function add(p) { const cur = cart.get(p.id) || 0; if (cur + 1 > p.quantity) { toast(t("pos.stock_limit", { n: p.quantity }), "error"); beep(false); return false; } cart.set(p.id, cur + 1); state.received = null; return true; }
 function setQty(p, qty) { if (qty <= 0) cart.delete(p.id); else cart.set(p.id, Math.min(qty, p.quantity)); if (qty > p.quantity) toast(t("pos.stock_limit", { n: p.quantity }), "error"); state.received = null; }
 function clearCart() { cart.clear(); state.discount = 0; state.received = null; state.customer = ""; }
 
+/** Resolve a scanned/typed code to a product: barcode first, then SKU, then exact name. */
+function findByCode(code) {
+  const c = String(code || "").trim().toLowerCase(); if (!c) return null;
+  const all = store.getProducts();
+  return all.find((p) => (p.barcode || "").toLowerCase() === c) || all.find((p) => p.sku.toLowerCase() === c) || all.find((p) => p.name.toLowerCase() === c) || null;
+}
+/** Handle a code from the scan field or the camera. Supports "3*CODE" to add three at once. */
+function scanCode(raw) {
+  let qty = 1; let code = String(raw || "").trim();
+  const m = code.match(/^(\d{1,3})\s*[*xX]\s*(.+)$/); if (m) { qty = parseInt(m[1]); code = m[2].trim(); }
+  const p = findByCode(code);
+  if (!p) { beep(false); toast(t("scan.not_found", { code }), "error"); return false; }
+  if (p.quantity <= 0) { beep(false); toast(`${p.name}: ${t("pos.out_of_stock")}`, "error"); return false; }
+  const cur = cart.get(p.id) || 0; const next = Math.min(cur + qty, p.quantity);
+  cart.set(p.id, next); state.received = null; beep(true);
+  toast(`${t("scan.added")}: ${p.name} × ${next}`);
+  if (currentRoot) refreshCart(currentRoot);
+  return true;
+}
+
 export function render(_root, app) {
-  const root = freshView();
+  const root = freshView(); currentRoot = root;
   if (state.lastSale) return renderSuccess(root, app);
   const products = store.getProducts({ search: state.search, categoryId: state.cat });
   const pg = paginate(products, "page", 24, state); const cats = store.categories;
   root.innerHTML = `${pageHead(t("pos.title"), t("pos.subtitle"))}
+  <div class="scan-bar card tight">
+    <span class="scan-ic">${icon("scan-barcode", 20)}</span>
+    <input id="scanInput" type="text" placeholder="${esc(t("scan.placeholder"))}" autocomplete="off" inputmode="${isMobile() ? "none" : "text"}" enterkeyhint="done"/>
+    ${cameraSupported() ? `<button type="button" class="btn primary" id="scanCamera">${icon("camera", 16)}<span>${esc(t("scan.camera"))}</span></button>` : ""}
+  </div>
   <div class="grid grid-7-5">
     <div class="card">
       <div class="search" style="max-width:none"><span class="search-icon">${icon("search", 17)}</span><input id="posSearch" type="search" placeholder="${esc(t("pos.search"))}" value="${esc(state.search)}" autocomplete="off"/></div>
@@ -42,7 +69,7 @@ function productCard(p) {
 function cartHTML(inModal = false) {
   const items = cartItems(); const n = items.reduce((s, i) => s + i.qty, 0);
   const head = inModal ? "" : section(t("pos.cart"), "shopping-cart", items.length ? `${n} ${t("common.items")}` : "");
-  if (!items.length) return `${head}${emptyState(t("pos.empty_cart"), t("pos.empty_cart_hint"), "empty_cart.png")}`;
+  if (!items.length) return `${head}${emptyState(t("pos.empty_cart"), t("scan.empty_hint"), "empty_cart.png")}`;
   const { sub, discount, total } = totals(); const isCredit = state.method === CREDIT_METHOD;
   if (state.received === null) state.received = isCredit ? 0 : total;
   const received = Number(state.received) || 0; const change = received - total;
@@ -51,6 +78,9 @@ function cartHTML(inModal = false) {
   const canCheckout = isCredit ? !!state.customer : received + 0.001 >= total;
   return `${head}
   <div class="cart-lines">${items.map(({ product: p, qty }) => `<div class="cart-line"><div><div class="n">${esc(p.name)}</div><div class="p num">${money(p.selling_price)} × ${qty}</div></div><div class="qty"><button type="button" data-dec="${p.id}" aria-label="-">${icon("minus", 14)}</button><span class="num">${qty}</span><button type="button" data-inc="${p.id}" aria-label="+">${icon("plus", 14)}</button></div><div class="lt num">${money(p.selling_price * qty)}</div><button type="button" class="btn-icon danger" data-rm="${p.id}" aria-label="${esc(t("common.delete"))}">${icon("x", 14)}</button></div>`).join("")}</div>
+  <div class="totals"><div class="l"><span>${esc(t("pos.subtotal"))}</span><b class="num">${money(sub)}</b></div>${discount ? `<div class="l"><span>${esc(t("pos.discount"))}</span><b class="num">- ${money(discount)}</b></div>` : ""}<div class="grand"><span>${esc(t("pos.total"))}</span><b class="num">${money(total)}</b></div></div>
+  <div class="quick-row">${btn(t("scan.quick_cash"), { cls: "primary lg", ic: "banknote", attrs: `data-quick-cash` })}${btn(t("scan.quick_cash_print"), { cls: "lg", ic: "printer", attrs: `data-quick-cash-print` })}</div>
+  <details class="more-options" ${isCredit || discount || state.customer ? "open" : ""}><summary>${icon("settings", 14)}<span>${esc(t("scan.more_options"))}</span></summary>
   <div class="form-grid" style="margin-top:12px">
     ${field(t("pos.discount"), `<input type="number" min="0" max="${sub}" step="1" name="discount" value="${discount}" inputmode="decimal"/>`)}
     ${field(t("common.payment_method"), select("method", store.paymentMethods, state.method))}
@@ -58,17 +88,16 @@ function cartHTML(inModal = false) {
     ${isCredit ? `<div class="alert info span-2">${icon("info", 14)}<span>${esc(t("pos.credit_hint"))}</span></div>` : ""}
     <div class="field"><label>${esc(t("pos.received"))}</label><div style="display:flex;gap:8px"><input type="number" min="0" step="1" name="received" value="${received}" inputmode="decimal" style="flex:1"/><button type="button" class="btn sm" data-exact>${esc(t("pos.exact"))}</button></div></div>
   </div>
-  <div class="totals"><div class="l"><span>${esc(t("pos.subtotal"))}</span><b class="num">${money(sub)}</b></div><div class="l"><span>${esc(t("pos.discount"))}</span><b class="num">- ${money(discount)}</b></div><div class="grand"><span>${esc(t("pos.total"))}</span><b class="num">${money(total)}</b></div></div>
   ${changeBox}
-  <div style="display:flex;gap:8px;margin-top:12px">${btn(t("pos.checkout"), { cls: "primary lg", ic: "check", attrs: `data-checkout style="flex:2.4" ${canCheckout ? "" : "disabled"}` })}${btn(t("common.clear"), { ic: "trash-2", attrs: 'data-clear style="flex:1"' })}</div>`;
+  <div style="display:flex;gap:8px;margin-top:12px">${btn(t("pos.checkout"), { cls: "primary", ic: "check", attrs: `data-checkout style="flex:2.4" ${canCheckout ? "" : "disabled"}` })}${btn(t("common.clear"), { ic: "trash-2", attrs: 'data-clear style="flex:1"' })}</div></details>`;
 }
 function refreshCart(root) {
-  // Listeners live on the container elements, so only the inner markup is replaced here.
   const card = root.querySelector("#cartCard"); if (card) card.innerHTML = cartHTML();
   const modalBody = document.querySelector("#modalRoot .modal-body #cartModal"); if (modalBody) modalBody.innerHTML = cartHTML(true);
   const fab = root.querySelector("#cartFab span"); if (fab) fab.textContent = `${t("pos.view_cart")} (${[...cart.values()].reduce((a, b) => a + b, 0)})`;
   root.querySelectorAll("[data-add]").forEach((b) => { const id = Number(b.dataset.add); const q = cart.get(id); let badge = b.querySelector(".in-cart"); if (q) { if (!badge) { badge = document.createElement("span"); badge.className = "in-cart"; b.appendChild(badge); } badge.textContent = q; } else if (badge) badge.remove(); });
 }
+function focusScan(root) { if (isMobile()) return; const inp = root.querySelector("#scanInput"); if (inp && !document.querySelector("#modalRoot .modal")) inp.focus(); }
 function bindCart(el, root) {
   el.addEventListener("click", (e) => {
     const dec = e.target.closest("[data-dec]"), inc = e.target.closest("[data-inc]"), rm = e.target.closest("[data-rm]");
@@ -76,8 +105,10 @@ function bindCart(el, root) {
     else if (inc) { const p = store.getProduct(Number(inc.dataset.inc)); setQty(p, (cart.get(p.id) || 0) + 1); refreshCart(root); }
     else if (rm) { const p = store.getProduct(Number(rm.dataset.rm)); setQty(p, 0); refreshCart(root); }
     else if (e.target.closest("[data-exact]")) { state.received = totals().total; refreshCart(root); }
-    else if (e.target.closest("[data-clear]")) { clearCart(); refreshCart(root); }
+    else if (e.target.closest("[data-clear]")) { clearCart(); refreshCart(root); focusScan(root); }
     else if (e.target.closest("[data-checkout]")) checkout(root);
+    else if (e.target.closest("[data-quick-cash]")) quickCash(root, false);
+    else if (e.target.closest("[data-quick-cash-print]")) quickCash(root, true);
   });
   el.addEventListener("change", (e) => {
     const n = e.target.name; if (!n) return;
@@ -90,28 +121,45 @@ function bindCart(el, root) {
   el.addEventListener("input", (e) => { if (e.target.name === "received") { state.received = Number(e.target.value) || 0; const { total } = totals(); const btnEl = el.querySelector("[data-checkout]"); if (btnEl && state.method !== CREDIT_METHOD) btnEl.disabled = state.received + 0.001 < total; } });
 }
 function bind(root, app) {
-  root.querySelector("#posSearch").addEventListener("input", (e) => { state.search = e.target.value; state.page = 1; const grid = root.querySelector("#posGrid"); render(root, app); const inp = root.querySelector("#posSearch"); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); });
+  const scan = root.querySelector("#scanInput");
+  scan.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const v = scan.value; scan.value = ""; if (v.trim()) scanCode(v); } });
+  root.querySelector("#scanCamera")?.addEventListener("click", () => openScanner({ title: t("scan.title"), hint: t("scan.point"), continuous: true, onCode: (code) => { scanCode(code); return false; } }));
+  root.querySelector("#posSearch").addEventListener("input", (e) => { state.search = e.target.value; state.page = 1; render(root, app); const inp = currentRoot.querySelector("#posSearch"); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); });
   root.querySelector("#posCats").addEventListener("click", (e) => { const b = e.target.closest("[data-cat]"); if (!b) return; state.cat = b.dataset.cat ? Number(b.dataset.cat) : null; state.page = 1; render(root, app); });
   root.addEventListener("click", (e) => {
-    const addBtn = e.target.closest("[data-add]"); if (addBtn) { const p = store.getProduct(Number(addBtn.dataset.add)); add(p); refreshCart(root); return; }
+    const addBtn = e.target.closest("[data-add]"); if (addBtn) { const p = store.getProduct(Number(addBtn.dataset.add)); if (p && add(p)) { refreshCart(root); focusScan(root); } return; }
     const pg = e.target.closest("[data-pager]"); if (pg) { state.page += Number(pg.dataset.dir); render(root, app); return; }
     if (e.target.closest("#cartFab")) { openModal({ title: t("pos.cart"), ic: "shopping-cart", body: `<div id="cartModal">${cartHTML(true)}</div>`, onMount: (m) => bindCart(m.querySelector("#cartModal"), root) }); }
   });
   bindCart(root.querySelector("#cartCard"), root);
+  // Keyboard-wedge scanners type fast and press Enter: keep the scan field focused on desktop.
+  root.addEventListener("keydown", (e) => { if (isMobile() || document.querySelector("#modalRoot .modal")) return; const tag = (e.target.tagName || "").toLowerCase(); if (tag !== "input" && tag !== "select" && tag !== "textarea" && e.key.length === 1) scan.focus(); });
+  focusScan(root);
 }
-function checkout(root) {
+function quickCash(root, print) {
+  const { total } = totals(); if (!cartItems().length) return;
+  state.method = "Cash"; state.received = total; state.customer = "";
+  checkout(root, print);
+}
+function checkout(root, print = false) {
   try {
     const result = store.createSale({ items: cartItems().map(({ product, qty }) => ({ product_id: product.id, qty, unit_price: product.selling_price })), discount: state.discount, payment_method: state.method, amount_received: state.received, customer_id: state.customer ? Number(state.customer) : null });
-    clearCart(); closeModal(); state.lastSale = result.id; renderSuccess(root);
-  } catch (e) { toast(errorMessage(e), "error"); }
+    clearCart(); closeModal(); state.lastSale = result.id; beep(true); renderSuccess(root);
+    if (print) printHTML(invoiceHTML(store.getSale(result.id)));
+  } catch (e) { toast(errorMessage(e), "error"); beep(false); }
 }
 function renderSuccess(root) {
   const sale = store.getSale(state.lastSale); if (!sale) { state.lastSale = null; return; }
   const sub = sale.credit_amount ? `${t("pos.credit_due")}: ${money(sale.credit_amount)}` : `${t("pos.change")}: ${money(sale.change_due)}`;
   root.innerHTML = `${pageHead(t("pos.title"), t("pos.subtitle"))}<div class="grid grid-2" style="grid-template-columns:1fr 1.4fr">
     <div class="stack"><div class="card success"><div class="ring">${icon("check", 26)}</div><h3>${esc(t("pos.sale_done"))}</h3><p class="muted">${esc(sale.invoice_no)} · ${esc(sale.payment_method)}</p><div class="big num">${money(sale.total)}</div><p class="muted">${esc(sub)}</p></div>
-    ${btn(t("pos.new_sale"), { cls: "primary block lg", ic: "shopping-cart", attrs: 'data-new' })}${btn(`${t("common.print")} ${t("pos.receipt")}`, { cls: "block", ic: "printer", attrs: 'data-print' })}</div>
+    ${btn(t("scan.next_sale"), { cls: "primary block lg", ic: "scan-barcode", attrs: 'data-new' })}${btn(`${t("common.print")} ${t("pos.receipt")}`, { cls: "block", ic: "printer", attrs: 'data-print' })}</div>
     <div>${invoiceHTML(sale)}</div></div>`;
-  root.querySelector("[data-new]").addEventListener("click", () => { state.lastSale = null; render(root); });
+  const next = () => { state.lastSale = null; render(root); focusScan(currentRoot); };
+  root.querySelector("[data-new]").addEventListener("click", next);
   root.querySelector("[data-print]").addEventListener("click", () => printHTML(invoiceHTML(sale)));
+  // A scanner press of Enter (or any typed character) starts the next sale immediately.
+  const onKey = (e) => { if (document.querySelector("#modalRoot .modal")) return; if (e.key === "Enter" || e.key.length === 1) { document.removeEventListener("keydown", onKey); next(); if (e.key.length === 1) { const inp = currentRoot.querySelector("#scanInput"); if (inp) inp.value = e.key; } } };
+  document.addEventListener("keydown", onKey);
+  root.addEventListener("DOMNodeRemoved", () => document.removeEventListener("keydown", onKey), { once: true });
 }
