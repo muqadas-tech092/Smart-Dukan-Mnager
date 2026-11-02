@@ -9,7 +9,7 @@ window.SDM_CONFIG = {
   // Product identity shown in the sidebar, browser tab and receipts
   productName: "Smart Dukaan Manager",
   tagline: "Retail management for your shop",
-  version: "2.1.1",
+  version: "2.1.2",
 
   // Your company (the reseller). Shown on the About screen and receipt footer.
   vendor: {

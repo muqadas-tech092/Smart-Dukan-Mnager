@@ -1,6 +1,6 @@
 /* Service worker: caches the app shell so it opens instantly and works offline.
    Bump CACHE_VERSION whenever files change so clients pick up the update. */
-const CACHE_VERSION = "sdm-v2.1.1";
+const CACHE_VERSION = "sdm-v2.1.2";
 const SHELL = [
   "./", "./index.html", "./config.js", "./manifest.webmanifest",
   "./css/app.css",
@@ -13,7 +13,9 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: "reload" bypasses the browser's HTTP cache, so a new version never installs stale files
+  // (GitHub Pages marks files fresh for 10 minutes).
+  event.waitUntil(caches.open(CACHE_VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
@@ -38,7 +40,7 @@ self.addEventListener("fetch", (event) => {
   // Same-origin app files: cache first, refresh in the background.
   event.respondWith(
     caches.match(req).then((cached) => {
-      const fetching = fetch(req).then((res) => {
+      const fetching = fetch(req, { cache: "no-cache" }).then((res) => {
         if (res && res.ok) caches.open(CACHE_VERSION).then((c) => c.put(req, res.clone()));
         return res;
       }).catch(() => cached);
